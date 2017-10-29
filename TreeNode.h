@@ -15,14 +15,14 @@ class TreeNode {
 public:
     TreeNode(int feature, int val);     //feature is the index of attribute, -1 means it is a leaf
                                         //val: 0 means no, 1 means yes, 2 means it is a root for a tree or subtree.
-    void AddChild(char featureVal, TreeNode child);
+    void AddChild(char featureVal, TreeNode* child);
     int GetFeature() const;
     int GetVal() const;
-    std::vector<std::pair<char, TreeNode> >& GetChilds();
+    std::vector<std::pair<char, TreeNode*> >& GetChilds();
 private:
     int mFeature;
     int mVal;    //Yes, No, OR cant decide
-    std::vector<std::pair<char, TreeNode> > mChilds;   //char is the value on the edge
+    std::vector<std::pair<char, TreeNode*> > mChilds;   //char is the value on the edge
 };
 
 #endif /* TreeNode_h */

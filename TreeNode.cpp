@@ -7,13 +7,14 @@
 //
 
 #include "TreeNode.h"
+#include <iostream>
 TreeNode::TreeNode(int feature, int val)
 {
     mFeature = feature;
     mVal = val;
 }
 
-void TreeNode::AddChild(char featureVal, TreeNode child)
+void TreeNode::AddChild(char featureVal, TreeNode* child)
 {
     mChilds.push_back(std::make_pair(featureVal, child));
 }
@@ -28,7 +29,7 @@ int TreeNode::GetVal() const
     return mVal;
 }
 
-std::vector<std::pair<char, TreeNode> >& TreeNode::GetChilds()
+std::vector<std::pair<char, TreeNode*> >& TreeNode::GetChilds()
 {
     return mChilds;
 }
