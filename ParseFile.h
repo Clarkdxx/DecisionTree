@@ -24,6 +24,8 @@ public:
                                   std::vector<std::vector<char> > parentSet,
                                   std::set<int> chosenSet);
     int CalculatePlurality(std::vector<std::vector<char> > dataSet);
+    char GetResult(TreeNode* root, std::vector<char> data);
+    void Print(TreeNode* root);
 private:
     std::vector<std::vector<char> > mDataSet;
     std::vector<std::vector<char> > mTrainSet;

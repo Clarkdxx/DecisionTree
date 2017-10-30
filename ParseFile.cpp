@@ -83,6 +83,7 @@ ParseFile::ParseFile(std::string const fileName)
         std::cout<<i<<",";
     }
     std::cout<<std::endl;
+    
     for(int i = 0; i < mDataSet.size(); i++)
     {
         for(int j = 0; j < mDataSet[i].size(); j++)
@@ -91,7 +92,8 @@ ParseFile::ParseFile(std::string const fileName)
         }
         std::cout<<std::endl;
     }*/
-   // std::cout<<"Here: "<<CalculateInfoGain(0, mDataSet)<<std::endl;
+    //CalculateInfoGain(1, mDataSet);
+    //std::cout<<"Here: "<<CalculateInfoGain(1, mDataSet)<<std::endl;
     std::mt19937 g(static_cast<uint32_t>(time(0)));
     std::shuffle(mDataSet.begin(), mDataSet.end(), g);
     CreateSets();
@@ -101,7 +103,6 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
                                          std::vector<std::vector<char> > parentSet,
                                          std::set<int> chosenSet)
 {
-    numO++;
     if(dataSet.size() == 0)     //if we have no more expamles
     {
         TreeNode* newNode = new TreeNode(-1, CalculatePlurality(parentSet));    //leaf node, p or not p
@@ -139,7 +140,8 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
         {
             if(chosenSet.find(i) == chosenSet.end())    //if we have not use this feature
             {
-                double infoGain = CalculateInfoGain(i+1, dataSet);  //we dont have classifcation in mFeature, so + 1
+                double infoGain = CalculateInfoGain(i + 1, dataSet);  //we dont have classifcation in mFeature, so + 1
+                std::cout<<i<<": "<<infoGain<<std::endl;
                 if(infoGain > max)
                 {
                     max = infoGain;
@@ -148,49 +150,18 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
             }
         }
         chosenSet.insert(maxIdx);
-        maxIdx++;
-        std::vector<char> subVal;   //store the different value that the current featrue have
-        std::vector<std::vector<int> > subValIndex; //store a vector of the index for each val of feature
-        for(int i = 0; i < dataSet.size(); i++)
+        TreeNode* newNode = new TreeNode(maxIdx, 2);
+        for(int i = 0; i < mAttributeVal[maxIdx].size(); i++)
         {
-            if (std::find(subVal.begin(), subVal.end(), dataSet[i][maxIdx]) != subVal.end())    //we have found this value before
+            std::vector<std::vector<char> > subDataSet;
+            for(int j = 0; j < dataSet.size(); j++)
             {
-                int indexSubVal = static_cast<int>(distance(subVal.begin(), find(subVal.begin(), subVal.end(), dataSet[i][maxIdx])));
-                subValIndex[indexSubVal].push_back(i);
-            }
-            else    //we find a new value for this feature
-            {
-                subVal.push_back(dataSet[i][maxIdx]);
-                std::vector<int> newValIndex;
-                newValIndex.push_back(i);
-                subValIndex.push_back(newValIndex);
-            }
-        }
-        if(subVal.size() != mAttributeVal[maxIdx - 1].size())
-        {
-            for(auto i : mAttributeVal[maxIdx - 1])
-            {
-                if(std::find(subVal.begin(), subVal.end(), i) == subVal.end())
+                if(dataSet[j][maxIdx + 1] == mAttributeVal[maxIdx][i])
                 {
-                    subVal.push_back(i);
+                    subDataSet.push_back(dataSet[j]);
                 }
             }
-        }
-        //for each value of ...
-        TreeNode* newNode = new TreeNode(maxIdx - 1, 2);
-        std::vector<std::vector<char> > subDataSet;
-        
-        for(int i = 0; i < subVal.size(); i++)
-        {
-            subDataSet.clear();
-            if(i < subValIndex.size())
-            {
-                for(int j = 0; j < subValIndex[i].size(); j++)
-                {
-                    subDataSet.push_back(dataSet[subValIndex[i][j]]);   //generate the subdataset
-                }
-            }
-            newNode->AddChild(subVal[i], DecesionTreeLearning(subDataSet,
+            newNode->AddChild(mAttributeVal[maxIdx][i], DecesionTreeLearning(subDataSet,
                                                               dataSet,
                                                               chosenSet));
         }
@@ -226,6 +197,15 @@ void ParseFile::CreateSets()
     int testSize = size * 0.2;  //0 - (testSize - 1) is the test set
     int start = testSize;
     std::copy(mDataSet.begin() + start, mDataSet.end(), std::back_inserter(mTrainSet));
+//    for(int i = 0; i < mTrainSet.size(); i++)
+//    {
+//        for(int j = 0; j < mTrainSet[i].size(); j++)
+//        {
+//            std::cout<<mTrainSet[i][j]<<",";
+//        }
+//        std::cout<<std::endl;
+//    }
+    std::cout<<std::endl;
     std::copy(mDataSet.begin(), mDataSet.begin() + start, std::back_inserter(mTestSet));
     std::vector<std::vector<char> > parentSet;
     std::set<int> chosenSet;
@@ -247,6 +227,7 @@ void ParseFile::CreateSets()
                     {
                         result = testRoot->GetVal();
                     }
+                    break;
                 }
             }
         }
@@ -256,53 +237,31 @@ void ParseFile::CreateSets()
         }
     }
     double result = (double)correct / mTrainSet.size();
+    Print(root);
     std::cout<<result<<std::endl;
     //TreeNode* root = DecesionTreeLearning(mDataSet, parentSet, chosenSet);      //Change it later
     //std::cout<<root->GetFeature()<<std::endl;
-    /*
-    TreeNode* childRoot = nullptr;
-    for(int i = 0; i < root->GetChilds().size(); i++)
-    {
-        TreeNode* tempNode = root->GetChilds()[i].second;
-        if(tempNode->GetFeature() == -1)
-        {
-            std::cout<<root->GetChilds()[i].first<<", "<<tempNode->GetVal()<<std::endl;
-        }
-        else
-        {
-            std::cout<<root->GetChilds()[i].first<<", "<<mFeatures[tempNode->GetFeature()]<<" "<<tempNode->GetChilds().size()<<std::endl;
-            childRoot = tempNode;
-        }
-    }
     
-    TreeNode* childchildRoot = nullptr;
-    for(int i = 0; i < childRoot->GetChilds().size(); i++)
+}
+
+void ParseFile::Print(TreeNode* root)
+{
+    std::cout<<"TreeNode: "<<mFeatures[root->GetFeature()]<<std::endl;
+    std::vector<std::pair<char, TreeNode*> > child = root->GetChilds();
+    for(int i = 0; i < child.size(); i++)
     {
-        TreeNode* tempNode = childRoot->GetChilds()[i].second;
-        if(tempNode->GetFeature() == -1)
-        {
-            //std::cout<<childRoot->GetChilds()[i].first<<", "<<tempNode->GetVal()<<std::endl;
-        }
+        std::cout<<child[i].first;
+        if(child[i].second->GetFeature() == -1)
+            std::cout<<" "<<child[i].second->GetVal()<<std::endl;
         else
+            std::cout<<" "<<child[i].second->GetFeature()<<std::endl;
+        if(child[i].second->GetVal() == 2)
         {
-            //std::cout<<childRoot->GetChilds()[i].first<<", "<<mFeatures[tempNode->GetFeature()]<<" "<<tempNode->GetChilds().size()<<std::endl;
-            childchildRoot = tempNode;
+            std::cout << "-----------" << std::endl;
+            Print(child[i].second);
+            std::cout << "~~~~~~~~~~"  << std::endl;
         }
     }
-    
-    for(int i = 0; i < childchildRoot->GetChilds().size(); i++)
-    {
-        TreeNode* tempNode = childchildRoot->GetChilds()[i].second;
-        if(tempNode->GetFeature() == -1)
-        {
-            std::cout<<childchildRoot->GetChilds()[i].first<<", "<<tempNode->GetVal()<<std::endl;
-        }
-        else
-        {
-            std::cout<<childchildRoot->GetChilds()[i].first<<", "<<mFeatures[tempNode->GetFeature()]<<" "<<tempNode->GetChilds().size()<<std::endl;
-        }
-    }
-    std::cout<<childchildRoot->GetChilds().size()<<std::endl;*/
 }
 
 //Proved correct calculation
@@ -320,50 +279,58 @@ double ParseFile::CalculateEntropy(int p, int n)
 
 double ParseFile::CalculateInfoGain(int index, std::vector<std::vector<char> > dataSet)
 {
-    double result;
-    std::vector<std::pair<int, int>> subtree;   //number of p and n
-    std::vector<char> subFeature;
-    int totP = 0;
+    double positive = 0, negative = 0;
     for(int i = 0; i < dataSet.size(); i++)
     {
-        if (std::find(subFeature.begin(), subFeature.end(), dataSet[i][index]) != subFeature.end()) //if you find the feature
+        if(dataSet[i][0] == '0')
         {
-            int indexSubtree = static_cast<int>(distance(subFeature.begin(), find(subFeature.begin(), subFeature.end(), dataSet[i][index])));
-            std::pair<int, int> myPair = subtree[indexSubtree];
-            if(dataSet[i][0] == '1')
-            {
-                myPair.first++;
-                totP++;
-            }
-            else
-            {
-                myPair.second++;
-            }
-            subtree[indexSubtree] = myPair;
+            negative += 1;
         }
         else
         {
-            subFeature.push_back(dataSet[i][index]);
-            if(dataSet[i][0] == '0')
-            {
-                subtree.push_back(std::make_pair(0, 1));
-            }
-            else
-            {
-                subtree.push_back(std::make_pair(1, 0));
-                totP++;
-            }
+            positive += 1;
         }
     }
-    result = CalculateEntropy(totP, static_cast<int>(dataSet.size() - totP));
-    for(int i = 0; i < subtree.size(); i++)
+    double entropy;
+    if(positive == 0 || negative == 0)
     {
-        int subP = subtree[i].first;
-        int subN = subtree[i].second;
-        int subSum = subP + subN;
-        result -= (double)subSum / dataSet.size() * CalculateEntropy(subP, subN);
+        entropy = 0;
     }
-    return std::round(result * 10000.0 ) / 10000.0;;
+    else
+    {
+        entropy = CalculateEntropy(positive, negative);
+    }
+    double remainder = 0;
+    for(int i = 0; i < mAttributeVal[index - 1].size(); i++)
+    {
+        double negativeK = 0, positiveK = 0;
+        double entropyK;
+        for(int j = 0; j < dataSet.size(); j++)
+        {
+            if(dataSet[j][index] == mAttributeVal[index - 1][i])
+            {
+                if(dataSet[j][0] == '0')
+                {
+                    negativeK += 1;
+                }
+                else
+                {
+                    positiveK += 1;
+                }
+            }
+        }
+        if(positiveK == 0 || negativeK == 0)
+        {
+            entropyK = 0;
+        }
+        else
+        {
+            entropyK = CalculateEntropy(positiveK, negativeK);
+        }
+        //std::cout<<dataSet.size()<<" "<<positive<<" "<<negative<<" "<<positiveK<<", "<<negativeK<<std::endl;
+        remainder += (positiveK + negativeK) / (positive + negative) * entropyK;
+    }
+    return entropy - remainder;
 }
 
 
