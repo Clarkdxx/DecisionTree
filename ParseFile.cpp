@@ -67,35 +67,6 @@ ParseFile::ParseFile(std::string const fileName)
         }
         inFile.close();
     }
-    /*
-    std::cout<<"Start: "<<mAttributeVal.size()<<std::endl;
-    for(auto i : mAttributeVal)
-    {
-        for(auto j : i)
-        {
-            std::cout<<j<<",";
-        }
-        std::cout<<std::endl;
-    }
-    
-    for(auto i : mFeatures)
-    {
-        std::cout<<i<<",";
-    }
-    std::cout<<std::endl;
-    
-    for(int i = 0; i < mDataSet.size(); i++)
-    {
-        for(int j = 0; j < mDataSet[i].size(); j++)
-        {
-            std::cout<<mDataSet[i][j]<<",";
-        }
-        std::cout<<std::endl;
-    }*/
-    //CalculateInfoGain(1, mDataSet);
-    //std::cout<<"Here: "<<CalculateInfoGain(1, mDataSet)<<std::endl;
-    
-    
     std::mt19937 g(static_cast<uint32_t>(time(0)));
     std::shuffle(mDataSet.begin(), mDataSet.end(), g);
     CreateSets();
@@ -140,7 +111,6 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
     {
         if(depth == mDepthBound)
         {
-            //std::cout<<CalculatePlurality(dataSet)<<std::endl;
             return new TreeNode(-1, CalculatePlurality(dataSet));
         }
         double max = -1.0;
@@ -158,6 +128,7 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
             }
         }
         chosenSet.insert(maxIdx);
+        
         TreeNode* newNode = new TreeNode(maxIdx, 2);
         for(int i = 0; i < mAttributeVal[maxIdx].size(); i++)
         {
@@ -212,11 +183,11 @@ void ParseFile::CreateSets()
     mDepthBound = -1;
     TreeNode* root = DecesionTreeLearning(mTrainSet, parentSet, chosenSet, 0);
     double result = RunTest(mTrainSet, root); //(double)correct / mTrainSet.size();
-    std::cout<<"Part 1 80%: "<<result<<" "<<numOperation<<std::endl;
+    std::cout<<"Part 1 80%: "<<result<<" "<<std::endl;
     result = RunTest(mTestSet, root);
     numOperation = 0;
-    std::cout<<"Part 1 20%: "<<result<<" "<<numOperation<<std::endl;
-    //Print(root);
+    std::cout<<"Part 1 20%: "<<result<<" "<<std::endl;
+    DeleteAll(root);
     
     std::mt19937 g(static_cast<uint32_t>(time(0)));     //shuffle the training set
     std::shuffle(mTrainSet.begin(), mTrainSet.end(), g);
@@ -227,54 +198,33 @@ void ParseFile::CreateSets()
     std::cout<<"depth    "<<"train%   "<<"vaild%"<<std::endl;
     double maxAccuracy = -1.0;
     int maxDepth = 0;
-    for(int i = 0; i < 100; i++)
+    for(int i = 1; i < 16; i++)
     {
         parentSet.clear();
         chosenSet.clear();
         mDepthBound = i;
-        numOperation = 0;
         TreeNode* newRoot = DecesionTreeLearning(newTrainSet, parentSet, chosenSet, 0);
         double resultVaild = RunTest(mVaildSet, newRoot);
-        std::cout<<i<<"        "<<RunTest(newTrainSet, newRoot)<<"    "<<resultVaild<<" "<<numOperation<<std::endl;
+        std::cout<<i<<"        "<<RunTest(newTrainSet, newRoot)<<"    "<<resultVaild<<" "<<std::endl;
         if(resultVaild > maxAccuracy)
         {
             maxAccuracy = resultVaild;
             maxDepth = i;
         }
+        /*
         if(RunTest(newTrainSet, newRoot) == 100)
         {
+            DeleteAll(newRoot);
             break;
-        }
+        }*/
+        DeleteAll(newRoot);
     }
-    std::vector<std::vector<char> > AB;
-//    AB.reserve(newTrainSet.size() + mVaildSet.size()); // preallocate memory
-//    AB.insert( AB.end(), newTrainSet.begin(), newTrainSet.end() );
-//    AB.insert( AB.end(), mVaildSet.begin(), mVaildSet.end() );
     parentSet.clear();
     chosenSet.clear();
     mDepthBound = maxDepth;
     TreeNode* newRoot = DecesionTreeLearning(mTrainSet, parentSet, chosenSet, 0);
     std::cout<<"Depth for max accuracy: "<<maxDepth<<" Max Accuracy: "<<RunTest(mTestSet, newRoot)<<std::endl;
-}
-
-void ParseFile::Print(TreeNode* root)
-{
-    std::cout<<"TreeNode: "<<mFeatures[root->GetFeature()]<<std::endl;
-    std::vector<std::pair<char, TreeNode*> > child = root->GetChilds();
-    for(int i = 0; i < child.size(); i++)
-    {
-        std::cout<<child[i].first;
-        if(child[i].second->GetFeature() == -1)
-            std::cout<<" "<<child[i].second->GetVal()<<std::endl;
-        else
-            std::cout<<" "<<child[i].second->GetFeature()<<std::endl;
-        if(child[i].second->GetVal() == 2)
-        {
-            std::cout << "-----------" << std::endl;
-            Print(child[i].second);
-            std::cout << "~~~~~~~~~~"  << std::endl;
-        }
-    }
+    DeleteAll(newRoot);
 }
 
 double ParseFile::RunTest(std::vector<std::vector<char> > testSet, TreeNode* root)
@@ -380,4 +330,14 @@ double ParseFile::CalculateInfoGain(int index, std::vector<std::vector<char> > d
     return entropy - remainder;
 }
 
-
+void ParseFile::DeleteAll(TreeNode* root)
+{
+    if(root != nullptr)
+    {
+        for(int i = 0; i < root->GetChilds().size(); i++)
+        {
+            DeleteAll(root->GetChilds()[i].second);
+        }
+        delete root;
+    }
+}

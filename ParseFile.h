@@ -28,6 +28,7 @@ public:
     char GetResult(TreeNode* root, std::vector<char> data);
     void Print(TreeNode* root);
     double RunTest(std::vector<std::vector<char> > testSet, TreeNode* root);
+    void DeleteAll(TreeNode* root);
 private:
     std::vector<std::vector<char> > mDataSet;
     std::vector<std::vector<char> > mTrainSet;  //setIndex = 0
