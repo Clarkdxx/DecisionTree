@@ -94,6 +94,8 @@ ParseFile::ParseFile(std::string const fileName)
     }*/
     //CalculateInfoGain(1, mDataSet);
     //std::cout<<"Here: "<<CalculateInfoGain(1, mDataSet)<<std::endl;
+    
+    
     std::mt19937 g(static_cast<uint32_t>(time(0)));
     std::shuffle(mDataSet.begin(), mDataSet.end(), g);
     CreateSets();
@@ -101,8 +103,10 @@ ParseFile::ParseFile(std::string const fileName)
 
 TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSet,
                                          std::vector<std::vector<char> > parentSet,
-                                         std::set<int> chosenSet)
+                                         std::set<int> chosenSet,
+                                         int depth)
 {
+    numOperation++;
     if(dataSet.size() == 0)     //if we have no more expamles
     {
         TreeNode* newNode = new TreeNode(-1, CalculatePlurality(parentSet));    //leaf node, p or not p
@@ -134,6 +138,11 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
     }
     else
     {
+        if(depth == mDepthBound)
+        {
+            //std::cout<<CalculatePlurality(dataSet)<<std::endl;
+            return new TreeNode(-1, CalculatePlurality(dataSet));
+        }
         double max = -1.0;
         int maxIdx = -1;    //the index of the feature with the largest infogain in mFeature
         for(int i = 0; i < mFeatures.size(); i++)
@@ -141,7 +150,6 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
             if(chosenSet.find(i) == chosenSet.end())    //if we have not use this feature
             {
                 double infoGain = CalculateInfoGain(i + 1, dataSet);  //we dont have classifcation in mFeature, so + 1
-                std::cout<<i<<": "<<infoGain<<std::endl;
                 if(infoGain > max)
                 {
                     max = infoGain;
@@ -163,7 +171,8 @@ TreeNode* ParseFile::DecesionTreeLearning(std::vector<std::vector<char> > dataSe
             }
             newNode->AddChild(mAttributeVal[maxIdx][i], DecesionTreeLearning(subDataSet,
                                                               dataSet,
-                                                              chosenSet));
+                                                              chosenSet,
+                                                              depth + 1));
         }
         return newNode;
     }
@@ -194,54 +203,58 @@ int ParseFile::CalculatePlurality(std::vector<std::vector<char> > dataSet)
 void ParseFile::CreateSets()
 {
     int size = static_cast<int>(mDataSet.size());
-    int testSize = size * 0.2;  //0 - (testSize - 1) is the test set
-    int start = testSize;
-    std::copy(mDataSet.begin() + start, mDataSet.end(), std::back_inserter(mTrainSet));
-//    for(int i = 0; i < mTrainSet.size(); i++)
-//    {
-//        for(int j = 0; j < mTrainSet[i].size(); j++)
-//        {
-//            std::cout<<mTrainSet[i][j]<<",";
-//        }
-//        std::cout<<std::endl;
-//    }
-    std::cout<<std::endl;
-    std::copy(mDataSet.begin(), mDataSet.begin() + start, std::back_inserter(mTestSet));
+    int testSize = size * 0.8;  //0 - (testSize - 1) is the test set
+    std::copy(mDataSet.begin() + testSize, mDataSet.end(), std::back_inserter(mTestSet));
+    std::copy(mDataSet.begin(), mDataSet.begin() + testSize, std::back_inserter(mTrainSet));
+    
     std::vector<std::vector<char> > parentSet;
     std::set<int> chosenSet;
-    TreeNode* root = DecesionTreeLearning(mTrainSet, parentSet, chosenSet);
-    int correct = 0;
-    for(int i = testSize; i < mDataSet.size(); i++)
+    mDepthBound = -1;
+    TreeNode* root = DecesionTreeLearning(mTrainSet, parentSet, chosenSet, 0);
+    double result = RunTest(mTrainSet, root); //(double)correct / mTrainSet.size();
+    std::cout<<"Part 1 80%: "<<result<<" "<<numOperation<<std::endl;
+    result = RunTest(mTestSet, root);
+    numOperation = 0;
+    std::cout<<"Part 1 20%: "<<result<<" "<<numOperation<<std::endl;
+    //Print(root);
+    
+    std::mt19937 g(static_cast<uint32_t>(time(0)));     //shuffle the training set
+    std::shuffle(mTrainSet.begin(), mTrainSet.end(), g);
+    testSize = mTrainSet.size() * 0.25;
+    std::copy(mTrainSet.begin(), mTrainSet.begin() + testSize, std::back_inserter(mVaildSet));
+    std::vector<std::vector<char> > newTrainSet(mTrainSet.begin() + testSize, mTrainSet.end());     //the new training set
+    
+    std::cout<<"depth    "<<"train%   "<<"vaild%"<<std::endl;
+    double maxAccuracy = -1.0;
+    int maxDepth = 0;
+    for(int i = 0; i < 100; i++)
     {
-        TreeNode* testRoot = root;
-        int result = -1;
-        while(result == -1)
+        parentSet.clear();
+        chosenSet.clear();
+        mDepthBound = i;
+        numOperation = 0;
+        TreeNode* newRoot = DecesionTreeLearning(newTrainSet, parentSet, chosenSet, 0);
+        double resultVaild = RunTest(mVaildSet, newRoot);
+        std::cout<<i<<"        "<<RunTest(newTrainSet, newRoot)<<"    "<<resultVaild<<" "<<numOperation<<std::endl;
+        if(resultVaild > maxAccuracy)
         {
-            int indexFeature = testRoot->GetFeature();  //the index of the attribute
-            for(int j = 0; j < testRoot->GetChilds().size(); j++)
-            {
-                if(testRoot->GetChilds()[j].first == mDataSet[i][indexFeature + 1])
-                {
-                    testRoot = testRoot->GetChilds()[j].second;
-                    if(testRoot->GetVal() != 2)
-                    {
-                        result = testRoot->GetVal();
-                    }
-                    break;
-                }
-            }
+            maxAccuracy = resultVaild;
+            maxDepth = i;
         }
-        if(result == static_cast<int>(mDataSet[i][0]) - 48)
+        if(RunTest(newTrainSet, newRoot) == 100)
         {
-            correct++;
+            break;
         }
     }
-    double result = (double)correct / mTrainSet.size();
-    Print(root);
-    std::cout<<result<<std::endl;
-    //TreeNode* root = DecesionTreeLearning(mDataSet, parentSet, chosenSet);      //Change it later
-    //std::cout<<root->GetFeature()<<std::endl;
-    
+    std::vector<std::vector<char> > AB;
+//    AB.reserve(newTrainSet.size() + mVaildSet.size()); // preallocate memory
+//    AB.insert( AB.end(), newTrainSet.begin(), newTrainSet.end() );
+//    AB.insert( AB.end(), mVaildSet.begin(), mVaildSet.end() );
+    parentSet.clear();
+    chosenSet.clear();
+    mDepthBound = maxDepth;
+    TreeNode* newRoot = DecesionTreeLearning(mTrainSet, parentSet, chosenSet, 0);
+    std::cout<<"Depth for max accuracy: "<<maxDepth<<" Max Accuracy: "<<RunTest(mTestSet, newRoot)<<std::endl;
 }
 
 void ParseFile::Print(TreeNode* root)
@@ -262,6 +275,41 @@ void ParseFile::Print(TreeNode* root)
             std::cout << "~~~~~~~~~~"  << std::endl;
         }
     }
+}
+
+double ParseFile::RunTest(std::vector<std::vector<char> > testSet, TreeNode* root)
+{
+    int correct = 0;
+    for(int i = 0; i < testSet.size(); i++)
+    {
+        TreeNode* testRoot = root;
+        int result = -1;
+        if(root->GetVal() != 2) //we are at depth 0
+        {
+            result = root->GetVal();
+        }
+        while(result == -1)
+        {
+            int indexFeature = testRoot->GetFeature();  //the index of the attribute
+            for(int j = 0; j < testRoot->GetChilds().size(); j++)
+            {
+                if(testRoot->GetChilds()[j].first == testSet[i][indexFeature + 1])
+                {
+                    testRoot = testRoot->GetChilds()[j].second;
+                    if(testRoot->GetVal() != 2)
+                    {
+                        result = testRoot->GetVal();
+                    }
+                    break;
+                }
+            }
+        }
+        if(result == static_cast<int>(testSet[i][0]) - 48)
+        {
+            correct++;
+        }
+    }
+    return (double)correct / testSet.size() * 100;
 }
 
 //Proved correct calculation
@@ -327,7 +375,6 @@ double ParseFile::CalculateInfoGain(int index, std::vector<std::vector<char> > d
         {
             entropyK = CalculateEntropy(positiveK, negativeK);
         }
-        //std::cout<<dataSet.size()<<" "<<positive<<" "<<negative<<" "<<positiveK<<", "<<negativeK<<std::endl;
         remainder += (positiveK + negativeK) / (positive + negative) * entropyK;
     }
     return entropy - remainder;
