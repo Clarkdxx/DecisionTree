@@ -211,12 +211,6 @@ void ParseFile::CreateSets()
             maxAccuracy = resultVaild;
             maxDepth = i;
         }
-        /*
-        if(RunTest(newTrainSet, newRoot) == 100)
-        {
-            DeleteAll(newRoot);
-            break;
-        }*/
         DeleteAll(newRoot);
     }
     parentSet.clear();
